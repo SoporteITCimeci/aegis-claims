@@ -1,0 +1,14 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; {% trans 'Log out' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<p>{% trans "¡Tu sesión ha finalizado exitosamente!" %}</p>
+<p><a href="{% url 'admin:login' %}">{% trans 'Iniciar sesión de nuevo' %}</a></p>
+{% endblock %}

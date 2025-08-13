@@ -1,0 +1,50 @@
+<!-- templates/registration/login.html -->
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>{% trans 'Iniciar Sesión' %} | CIMECI Médicas</title>
+    <link rel="stylesheet" type="text/css" href="{% static "admin/css/base.css" %}">
+    <link rel="stylesheet" type="text/css" href="{% static "admin/css/login.css" %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f5f5f5; }
+        #container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 2rem; max-width: 400px; min-width: 300px; width: 90%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #content-main { text-align: center; }
+        .login-logo { max-height: 120px; width: auto; margin-bottom: 1rem; }
+    </style>
+</head>
+<body class="login">
+    <div id="container">
+        <div id="content" class="colM">
+            <div id="content-main">
+                <img src="{% static 'img/LOGO_CIMECI_RIF.JPG' %}" alt="Logo CIMECI" class="login-logo">
+                <h1>Portal de CIMECI Médicas</h1>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <p class="errornote">{{ message }}</p>
+                    {% endfor %}
+                {% endif %}
+
+                {% if form.errors and not messages %}
+                    <p class="errornote">Usuario o contraseña incorrectos. Por favor, intente de nuevo.</p>
+                {% endif %}
+
+                <form method="post" action="{% url 'login' %}">
+                    {% csrf_token %}
+                    <div class="form-row">
+                        <label for="id_username">Usuario:</label> {{ form.username }}
+                    </div>
+                    <div class="form-row">
+                        <label for="id_password">Contraseña:</label> {{ form.password }}
+                    </div>
+                    <div class="submit-row">
+                        <input type="submit" value="Iniciar Sesión">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

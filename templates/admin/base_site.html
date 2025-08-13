@@ -1,0 +1,18 @@
+<!-- templates/admin/base_site.html -->
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" type="text/css" href="{% static 'css/admin_custom.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <img src="{% static 'img/LOGO_CIMECI_RIF.JPG' %}" alt="Logo CIMECI" style="height: 120px; margin-right: 10px; vertical-align: middle;">
+        <span style="vertical-align: middle;">{{ site_header|default:_('Django administration') }}</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

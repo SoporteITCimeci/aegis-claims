@@ -1,0 +1,122 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validación de Asegurabilidad - CIMECI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+
+    <form id="logout-form" method="post" action="{% url 'logout' %}">{% csrf_token %}</form>
+
+    <header class="bg-[#008CBA] shadow-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <img src="{% static 'img/LOGO_CIMECI_RIF.JPG' %}" alt="Logo CIMECI" style="height: 120px;" class="mr-4">
+                <h1 class="text-2xl font-bold text-white">Portal de Operaciones</h1>
+            </div>
+            <div class="text-white">
+                Bienvenido, {{ user.username }} | 
+                <a href="#" onclick="document.getElementById('logout-form').submit();" class="hover:underline">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-7xl mx-auto">
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Validación de Asegurabilidad</h2>
+
+            <form method="GET" action="{% url 'validar_asegurabilidad' %}" class="mb-6 space-y-4">
+                <div class="flex flex-col sm:flex-row items-end gap-4">
+                    <div class="flex-grow w-full">
+                        <label for="q" class="block text-sm font-medium text-gray-700">Buscar por Nombre o Cédula</label>
+                        <input type="text" name="q" id="q" value="{{ query|default:'' }}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#00A99D] focus:border-[#00A99D]">
+                    </div>
+                    <button type="submit" class="w-full sm:w-auto bg-[#008CBA] hover:bg-[#007B9A] text-white font-bold py-2 px-6 rounded-md">Buscar</button>
+                    <a href="{% url 'validar_asegurabilidad' %}" class="w-full sm:w-auto bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-md text-center">Limpiar</a>
+                </div>
+                
+                {% if show_filters %}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4">
+                    <div>
+                        <label for="cliente" class="block text-sm font-medium text-gray-700">Filtrar por Cliente</label>
+                        <select name="cliente" id="cliente" onchange="this.form.submit()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                            <option value="">Todos</option>
+                            {% for cliente in clientes %}<option value="{{ cliente }}" {% if cliente == cliente_filtro %}selected{% endif %}>{{ cliente }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="aseguradora" class="block text-sm font-medium text-gray-700">Filtrar por Aseguradora</label>
+                        <select name="aseguradora" id="aseguradora" onchange="this.form.submit()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                            <option value="">Todas</option>
+                            {% for aseguradora in aseguradoras %}<option value="{{ aseguradora }}" {% if aseguradora == aseguradora_filtro %}selected{% endif %}>{{ aseguradora }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="ente" class="block text-sm font-medium text-gray-700">Filtrar por Ente</label>
+                        <select name="ente" id="ente" onchange="this.form.submit()" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                            <option value="">Todos</option>
+                            {% for ente in entes %}<option value="{{ ente }}" {% if ente == ente_filtro %}selected{% endif %}>{{ ente }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
+            </form>
+
+            {% if resultados %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% for resultado in resultados %}
+                    {% with asegurado=resultado.asegurado titular=resultado.asegurado.titular %}
+                    <div class="rounded-lg border relative overflow-hidden flex flex-col
+                        {% if resultado.es_elegible %} border-green-400 bg-green-50
+                        {% else %} border-red-400 bg-red-50 {% endif %}">
+                        
+                        <div class="p-4 flex-grow">
+                            <h3 class="font-bold text-lg text-gray-800">{{ asegurado.nombre_completo }}</h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm">
+                                <span class="font-semibold text-gray-600">C.I. BEN:</span><span>{{ asegurado.get_tipo_documento_display }} - {{ asegurado.cedula }}</span>
+                                {% if titular %}<span class="font-semibold text-gray-600">Nombre Titular:</span><span>{{ titular.nombre_completo }}</span>{% endif %}
+                                <span class="font-semibold text-gray-600">Parentesco:</span><span>{{ asegurado.get_parentesco_display }}</span>
+                                <span class="font-semibold text-gray-600">Edad:</span><span>{{ asegurado.edad }} años</span>
+                                <span class="font-semibold text-gray-600">Cliente:</span><span>{{ asegurado.contrato.cliente.razon_social }}</span>
+                                <span class="font-semibold text-gray-600">Aseguradora:</span><span>{{ asegurado.contrato.aseguradora }}</span>
+                                <span class="font-semibold text-gray-600">Ente:</span><span>{{ asegurado.contrato.ente }}</span>
+                                <span class="font-semibold text-gray-600">Plan:</span><span>{{ asegurado.contrato.plan.nombre_plan }}</span>
+                                <span class="font-semibold text-gray-600">Fin Contrato:</span><span>{{ asegurado.contrato.fecha_fin_vigencia|date:"d/m/Y" }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white/50 border-t px-4 py-2 flex justify-between items-center">
+                            {% if resultado.es_elegible %}
+                                <a href="{% url 'consultar_servicios' asegurado_id=asegurado.id %}" class="text-blue-600 hover:underline text-sm font-semibold">Consultar Servicios</a>
+                            {% else %}
+                                <a href="#" class="text-red-600 hover:underline text-sm font-semibold">Servicio Improcedente</a>
+                            {% endif %}
+                            <a href="mailto:soporte@cimeci.com?subject=Inconsistencia de Datos - {{asegurado.nombre_completo}} ({{asegurado.cedula}})" class="text-gray-500 hover:underline text-xs">Reportar Inconsistencia</a>
+                        </div>
+
+                        <div class="absolute top-2 right-2 px-3 py-1 text-xs font-bold text-white rounded-full
+                            {% if resultado.es_elegible %} bg-green-500
+                            {% else %} bg-red-500 {% endif %}">
+                            {{ asegurado.get_estado_individual_display }}
+                        </div>
+                    </div>
+                    {% endwith %}
+                {% endfor %}
+                </div>
+            {% elif error %}
+                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md text-center">
+                    <p class="font-bold">Aviso</p>
+                    <p>{{ error }}</p>
+                    <a href="#" class="mt-4 inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
+                        Reportar Asegurado No Incluido
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </main>
+</body>
+</html>

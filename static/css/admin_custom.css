@@ -1,0 +1,36 @@
+/* static/css/admin_custom.css */
+
+/* --- Estilos Generales --- */
+#header {
+    background: #008CBA;
+    color: #ffffff;
+    position: relative;
+}
+
+#header a:link, #header a:visited {
+    color: #ffffff;
+}
+
+#branding {
+    width: 100%;
+    text-align: center;
+    padding: 10px 0;
+    float: none;
+}
+
+#user-tools {
+    position: absolute;
+    top: 50%;
+    right: 40px;
+    transform: translateY(-50%);
+    padding: 0;
+    margin: 0;
+    font-weight: 300;
+    font-size: 11px;
+    text-align: right;
+}
+
+.module h2, .module caption, .inline-group h2 { background: #00A99D; }
+div.breadcrumbs { background: #008CBA; }
+.button, input[type=submit], input[type=button], .submit-row input, a.button { background: #008CBA; color: #ffffff; }
+.button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover, a.button:hover { background: #007B9A; }
