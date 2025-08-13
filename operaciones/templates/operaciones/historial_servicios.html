@@ -25,7 +25,7 @@
     </header>
 
     <main class="container mx-auto px-4 py-8">
-        <div class="bg-white p-6 rounded-lg shadow-lg max-w-6xl mx-auto">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-7xl mx-auto">
             
             <div class="flex justify-between items-center border-b pb-2 mb-4">
                 <h2 class="text-2xl font-bold text-gray-800">Consulta de Servicios</h2>
@@ -79,64 +79,49 @@
             </div>
 
             <!-- Historial de Servicios Otorgados -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="md:col-span-2">
-                    <h4 class="font-bold text-lg mb-2 text-gray-700">Historial Detallado de Órdenes de Servicio</h4>
-                    <div class="overflow-x-auto border rounded-md">
-                        <table class="min-w-full bg-white">
-                            <thead class="bg-gray-200">
-                                <tr>
-                                    <th class="py-3 px-4 text-left">N° OS</th>
-                                    <th class="py-3 px-4 text-left">Fecha</th>
-                                    <th class="py-3 px-4 text-left">Proveedor</th>
-                                    <th class="py-3 px-4 text-left">Servicios</th>
-                                    <th class="py-3 px-4 text-center">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for os in ordenes %}
-                                <tr class="hover:bg-gray-50">
-                                    <td class="py-3 px-4 border-b">{{ os.numero_os }}</td>
-                                    <td class="py-3 px-4 border-b">{{ os.fecha_emision|date:"d/m/Y" }}</td>
-                                    <td class="py-3 px-4 border-b">{{ os.punto_atencion.proveedor.razon_social }}</td>
-                                    <td class="py-3 px-4 border-b">
-                                        <ul class="list-disc list-inside text-sm">
-                                            {% for servicio_baremo in os.servicios_prestados.all %}
-                                                <li>{{ servicio_baremo.sub_servicio.descripcion }}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    </td>
-                                    <td class="py-3 px-4 border-b text-center"><span class="px-2 py-1 text-xs font-semibold rounded-full {% if os.estado_os == 'PAG' %} bg-green-200 text-green-800 {% elif os.estado_os == 'PEN' %} bg-yellow-200 text-yellow-800 {% elif os.estado_os == 'ACT' %} bg-blue-200 text-blue-800 {% elif os.estado_os == 'SUS' %} bg-red-200 text-red-800 {% else %} bg-gray-200 text-gray-800 {% endif %}">{{ os.get_estado_os_display }}</span></td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="5" class="py-4 px-4 text-center text-gray-500">No se encontraron OS en esta vigencia.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div>
-                    <h4 class="font-bold text-lg mb-2 text-gray-700">Resumen por Servicio</h4>
-                    <div class="overflow-x-auto border rounded-md">
-                        <table class="min-w-full bg-white">
-                            <thead class="bg-gray-200">
-                                <tr>
-                                    <th class="py-2 px-4 text-left">Servicio</th>
-                                    <th class="py-2 px-4 text-center">Cantidad</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in resumen_servicios %}
-                                <tr class="hover:bg-gray-50 border-t">
-                                    <td class="py-2 px-4">{{ item.servicios_prestados__sub_servicio__descripcion }}</td>
-                                    <td class="py-2 px-4 text-center">{{ item.cantidad }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="2" class="py-3 px-4 text-center text-gray-500">Sin servicios consumidos.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+            <div>
+                <h4 class="font-bold text-lg mb-2 text-gray-700">Historial Detallado de Órdenes de Servicio</h4>
+                <div class="overflow-x-auto border rounded-md">
+                    <table class="min-w-full bg-white text-sm">
+                        <thead class="bg-gray-200">
+                            <tr>
+                                <th class="py-3 px-4 text-left">N° OS</th>
+                                <th class="py-3 px-4 text-left">Fecha</th>
+                                <th class="py-3 px-4 text-left">Proveedor</th>
+                                <th class="py-3 px-4 text-left">Servicios</th>
+                                <th class="py-3 px-4 text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for os in ordenes %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3 px-4 border-b">{{ os.numero_os }}</td>
+                                <td class="py-3 px-4 border-b">{{ os.fecha_emision|date:"d/m/Y" }}</td>
+                                <td class="py-3 px-4 border-b">{{ os.punto_atencion.proveedor.razon_social }}</td>
+                                <td class="py-3 px-4 border-b">
+                                    <ul class="list-disc list-inside">
+                                        {% for servicio_baremo in os.servicios_prestados.all %}
+                                            <li>{{ servicio_baremo.sub_servicio.descripcion }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                                <td class="py-3 px-4 border-b text-center">
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full 
+                                        {% if os.estado_os == 'PAG' %} bg-green-200 text-green-800
+                                        {% elif os.estado_os == 'PEN' %} bg-yellow-200 text-yellow-800
+                                        {% elif os.estado_os == 'ACT' %} bg-blue-200 text-blue-800
+                                        {% elif os.estado_os == 'SUS' %} bg-red-200 text-red-800
+                                        {% elif os.estado_os == 'REC' %} bg-red-600 text-white
+                                        {% else %} bg-gray-200 text-gray-800 {% endif %}">
+                                        {{ os.get_estado_os_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="py-4 px-4 text-center text-gray-500">No se encontraron OS en esta vigencia.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

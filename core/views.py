@@ -8,10 +8,8 @@ from django.contrib import messages
 
 def login_view(request):
     """
-    Gestiona el inicio de sesión de todos los usuarios, asegurando que no haya
-    conflictos de sesión.
+    Gestiona el inicio de sesión de todos los usuarios.
     """
-    # Si un usuario ya está logueado, lo deslogueamos primero para evitar conflictos.
     if request.user.is_authenticated:
         logout(request)
 
@@ -33,23 +31,28 @@ def login_view(request):
 def login_redirect(request):
     """
     Redirige al usuario a la página apropiada según su rol.
-    Esta es la única fuente de verdad para la redirección post-login.
     """
     user = request.user
 
     if not user.is_authenticated:
         return redirect(reverse('login'))
 
-    # Prioridad 1: El rol de Operaciones va al portal de validación.
-    if hasattr(user, 'rol') and user.rol and user.rol.nombre_rol == 'Operaciones':
-        return redirect('validar_asegurabilidad')
+    # Los superusuarios siempre van al panel de admin.
+    if user.is_superuser:
+        return redirect('admin:index')
     
-    # Prioridad 2: Superusuarios y personal de staff van al panel de admin.
-    if user.is_superuser or user.is_staff:
+    # Se verifica si el usuario tiene un rol asignado.
+    if hasattr(user, 'rol') and user.rol:
+        rol_nombre = user.rol.nombre_rol.lower()
+        # Si el rol es 'operaciones' O contiene 'supervisor', va al portal.
+        if rol_nombre == 'operaciones' or 'supervisor' in rol_nombre:
+            return redirect('validar_asegurabilidad')
+    
+    # Si es staff pero no de los roles anteriores (ej. Finanzas), va al admin.
+    if user.is_staff:
         return redirect('admin:index')
 
-    # Si llega aquí, es un usuario autenticado sin rol ni permisos de staff.
-    # Lo expulsamos por seguridad.
+    # Si llega aquí, es un usuario sin permisos válidos. Lo expulsamos.
     messages.error(request, "No tiene permisos para acceder al sistema.")
     logout(request)
     return redirect('login')

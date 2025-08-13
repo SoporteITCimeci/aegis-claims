@@ -1,68 +1,39 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seleccionar Servicios - OS {{ orden_servicio.numero_os }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100">
+{% extends "operaciones/base_operaciones.html" %}
 
-    <!-- Cabecera -->
-    <header class="bg-[#008CBA] shadow-md">
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center">
-                <img src="{% static 'img/LOGO_CIMECI_RIF.JPG' %}" alt="Logo CIMECI" style="height: 120px;" class="mr-4">
-                <h1 class="text-2xl font-bold text-white">Portal de Operaciones</h1>
-            </div>
-            <div class="text-white">
-                Bienvenido, {{ user.username }}
-            </div>
+{% block title %}Seleccionar Servicios - OS {{ orden_servicio.numero_os }}{% endblock %}
+
+{% block content %}
+    <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Paso 2: Seleccionar Servicios</h2>
+
+    <div class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <p><strong>Asegurado:</strong> {{ orden_servicio.siniestro.asegurado.nombre_completo }}</p>
+        <p><strong>Proveedor:</strong> {{ orden_servicio.punto_atencion.proveedor.razon_social }}</p>
+        <p><strong>Sede:</strong> {{ orden_servicio.punto_atencion.nombre_sede }}</p>
+    </div>
+
+    <form method="POST" action="{% url 'seleccionar_servicios' os_id=orden_servicio.siniestro_id %}">
+        {% csrf_token %}
+        
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Servicios Disponibles (Según Plan y Baremo del Proveedor)</h3>
+        
+        <div class="max-h-96 overflow-y-auto border rounded-md p-4 space-y-2">
+            {% for servicio_baremo in servicios_disponibles %}
+                <label class="flex items-center p-2 rounded-md hover:bg-gray-100 transition duration-200">
+                    <input type="checkbox" name="servicios" value="{{ servicio_baremo.id }}" class="h-5 w-5 rounded border-gray-300 text-[#008CBA] focus:ring-[#00A99D]">
+                    <span class="ml-3 text-gray-700 flex-grow">{{ servicio_baremo.sub_servicio.descripcion }}</span>
+                </label>
+            {% empty %}
+                <p class="text-gray-500">Este proveedor no tiene servicios activos para su plan contratado.</p>
+            {% endfor %}
         </div>
-    </header>
 
-    <!-- Contenido Principal -->
-    <main class="container mx-auto px-4 py-8">
-        <div class="bg-white p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
-            
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Paso 2: Seleccionar Servicios</h2>
-
-            <!-- Resumen de la OS -->
-            <div class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <p><strong>Asegurado:</strong> {{ orden_servicio.siniestro.asegurado.nombre_completo }}</p>
-                <p><strong>Proveedor:</strong> {{ orden_servicio.punto_atencion.proveedor.razon_social }}</p>
-                <p><strong>Sede:</strong> {{ orden_servicio.punto_atencion.nombre_sede }}</p>
-            </div>
-
-            <!-- Formulario de Selección de Servicios -->
-            <form method="POST" action="{% url 'seleccionar_servicios' os_id=orden_servicio.siniestro_id %}">
-                {% csrf_token %}
-                
-                <h3 class="text-lg font-semibold text-gray-700 mb-2">Servicios Disponibles (Según Plan y Baremo del Proveedor)</h3>
-                
-                <div class="max-h-96 overflow-y-auto border rounded-md p-4 space-y-2">
-                    {% for servicio_baremo in servicios_disponibles %}
-                        <label class="flex items-center p-2 rounded-md hover:bg-gray-100 transition duration-200">
-                            <input type="checkbox" name="servicios" value="{{ servicio_baremo.id }}" class="h-5 w-5 rounded border-gray-300 text-[#008CBA] focus:ring-[#00A99D]">
-                            <span class="ml-3 text-gray-700 flex-grow">{{ servicio_baremo.sub_servicio.descripcion }}</span>
-                        </label>
-                    {% empty %}
-                        <p class="text-gray-500">Este proveedor no tiene servicios activos para su plan contratado.</p>
-                    {% endfor %}
-                </div>
-
-                <div class="mt-8 border-t pt-6 flex justify-between items-center">
-                    <a href="{% url 'cancelar_creacion_os' os_id=orden_servicio.siniestro_id %}" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-5 rounded-lg transition duration-300">
-                        &larr; Volver
-                    </a>
-                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300">
-                        Finalizar y Generar OS
-                    </button>
-                </div>
-            </form>
+        <div class="mt-8 border-t pt-6 flex justify-between items-center">
+            <a href="{% url 'cancelar_creacion_os' os_id=orden_servicio.siniestro_id %}" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-5 rounded-lg transition duration-300">
+                &larr; Volver
+            </a>
+            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300">
+                Finalizar y Generar OS
+            </button>
         </div>
-    </main>
-
-</body>
-</html>
+    </form>
+{% endblock %}

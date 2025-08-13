@@ -1,0 +1,58 @@
+{% extends "operaciones/base_operaciones.html" %}
+
+{% block title %}Bandeja de Autorizaciones{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-center border-b pb-2 mb-4">
+        <h2 class="text-2xl font-bold text-gray-800">Bandeja de Autorizaciones</h2>
+        <a href="{% url 'validar_asegurabilidad' %}" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md">
+            &larr; Volver a la Validación
+        </a>
+    </div>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="p-4 mb-4 text-sm rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="py-3 px-4 text-left">Solicitud</th>
+                    <th class="py-3 px-4 text-left">Asegurado</th>
+                    <th class="py-3 px-4 text-left">Proveedor</th>
+                    <th class="py-3 px-4 text-left">Servicios Solicitados</th>
+                    <th class="py-3 px-4 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for os in ordenes %}
+                <tr class="hover:bg-gray-50">
+                    <td class="py-3 px-4 border-b">{{ os.numero_os }}</td>
+                    <td class="py-3 px-4 border-b">{{ os.siniestro.asegurado.nombre_completo }}</td>
+                    <td class="py-3 px-4 border-b">{{ os.punto_atencion.proveedor.razon_social }}</td>
+                    <td class="py-3 px-4 border-b">
+                        <ul class="list-disc list-inside text-sm">
+                            {% for item in os.servicios_prestados.all %}
+                                <li>{{ item.sub_servicio.descripcion }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td class="py-3 px-4 border-b text-center space-x-2">
+                        <a href="{% url 'aprobar_os' os_id=os.siniestro_id %}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-xs">Aprobar</a>
+                        <a href="{% url 'rechazar_os' os_id=os.siniestro_id %}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-xs">Rechazar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="py-4 px-4 text-center text-gray-500">No hay órdenes pendientes de autorización.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

@@ -6,10 +6,10 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.utils import timezone
 from django.db.models import Count, Sum, Q
-
 from gestion.models import Asegurado, Contrato, DetallePlan, Proveedor, PuntoAtencion, BaremoProveedor, CoberturaCategoriaPlan
 from .models import OrdenDeServicio, Siniestro
-
+from django.contrib import messages
+from django.http import HttpResponseForbidden
 
 @login_required
 def validar_asegurabilidad(request):
@@ -85,6 +85,11 @@ def consultar_servicios(request, asegurado_id):
         fecha_emision__date__range=(contrato_actual.fecha_inicio_vigencia, contrato_actual.fecha_fin_vigencia)
     ).order_by('-fecha_emision')
 
+    # Filtramos las OS que cuentan como "consumidas"
+    ordenes_consumidas = ordenes_de_servicio.exclude(
+        estado_os__in=[OrdenDeServicio.EstadoOS.RECHAZADA, OrdenDeServicio.EstadoOS.SUSPENDIDA]
+    )
+
     # --- Cálculo de Coberturas y Consumo por Categoría ---
     coberturas = []
     coberturas_plan = CoberturaCategoriaPlan.objects.filter(plan=contrato_actual.plan).select_related('categoria')
@@ -92,23 +97,22 @@ def consultar_servicios(request, asegurado_id):
     inicio_mes = hoy.replace(day=1)
 
     for cobertura in coberturas_plan:
-        # Consumo anual por categoría
-        consumo_anual = ordenes_de_servicio.filter(
+        # Consumo anual por categoría (usando las OS consumidas)
+        consumo_anual = ordenes_consumidas.filter(
             servicios_prestados__sub_servicio__categoria=cobertura.categoria
         ).count()
         
         disponible_anual = max(0, cobertura.cantidad_maxima - consumo_anual)
         disponible_final = disponible_anual
 
-        # Consumo mensual si aplica
+        # Consumo mensual si aplica (usando las OS consumidas)
         consumo_mensual = None
         if cobertura.limite_mensual > 0:
-            consumo_mensual = ordenes_de_servicio.filter(
+            consumo_mensual = ordenes_consumidas.filter(
                 servicios_prestados__sub_servicio__categoria=cobertura.categoria,
                 fecha_emision__date__gte=inicio_mes
             ).count()
             disponible_mensual = max(0, cobertura.limite_mensual - consumo_mensual)
-            # El disponible es el menor de los dos límites
             disponible_final = min(disponible_anual, disponible_mensual)
 
         coberturas.append({
@@ -120,8 +124,8 @@ def consultar_servicios(request, asegurado_id):
             'disponible': disponible_final
         })
     
-    # Resumen de servicios solicitados
-    resumen_servicios = ordenes_de_servicio.values(
+    # Resumen de servicios solicitados (usando las OS consumidas)
+    resumen_servicios = ordenes_consumidas.values(
         'servicios_prestados__sub_servicio__descripcion'
     ).annotate(
         cantidad=Count('servicios_prestados__sub_servicio')
@@ -130,7 +134,7 @@ def consultar_servicios(request, asegurado_id):
     contexto = {
         'asegurado': asegurado,
         'contrato': contrato_actual,
-        'ordenes': ordenes_de_servicio,
+        'ordenes': ordenes_de_servicio, # Mostramos todas las órdenes en el historial
         'coberturas': coberturas,
         'resumen_servicios': resumen_servicios,
     }
@@ -173,28 +177,62 @@ def crear_orden_de_servicio(request, asegurado_id):
 @login_required
 def seleccionar_servicios(request, os_id):
     orden_servicio = get_object_or_404(OrdenDeServicio, pk=os_id)
+    asegurado = orden_servicio.siniestro.asegurado
+    contrato_actual = asegurado.contrato
     proveedor = orden_servicio.punto_atencion.proveedor
     
-    plan_asegurado = orden_servicio.siniestro.asegurado.contrato.plan
-    subservicios_incluidos = DetallePlan.objects.filter(plan=plan_asegurado).values_list('sub_servicio_id', flat=True)
-    
+    # Obtenemos los subservicios que el proveedor ofrece Y que están en el plan del asegurado
+    subservicios_incluidos_ids = DetallePlan.objects.filter(plan=contrato_actual.plan).values_list('sub_servicio_id', flat=True)
     servicios_disponibles = BaremoProveedor.objects.filter(
         proveedor=proveedor,
         activo=True,
-        sub_servicio_id__in=subservicios_incluidos
-    )
+        sub_servicio_id__in=subservicios_incluidos_ids
+    ).select_related('sub_servicio__categoria')
 
     if request.method == 'POST':
         servicios_seleccionados_ids = request.POST.getlist('servicios')
+        servicios_seleccionados = BaremoProveedor.objects.filter(id__in=servicios_seleccionados_ids)
         
-        orden_servicio.servicios_prestados.set(servicios_seleccionados_ids)
-        
-        total = orden_servicio.servicios_prestados.aggregate(Sum('precio'))['precio__sum'] or 0.00
+        necesita_autorizacion = False
+        motivo_autorizacion = []
+
+        # --- LÓGICA DE VALIDACIÓN DE COBERTURAS ---
+        ordenes_previas = OrdenDeServicio.objects.filter(
+            siniestro__asegurado=asegurado,
+            fecha_emision__date__range=(contrato_actual.fecha_inicio_vigencia, timezone.now().date())
+        )
+
+        for servicio_baremo in servicios_seleccionados:
+            categoria = servicio_baremo.sub_servicio.categoria
+            try:
+                cobertura_categoria = CoberturaCategoriaPlan.objects.get(plan=contrato_actual.plan, categoria=categoria)
+                
+                # Calcular consumo
+                consumo_anual = ordenes_previas.filter(servicios_prestados__sub_servicio__categoria=categoria).count()
+                
+                if not cobertura_categoria.es_ilimitada and consumo_anual >= cobertura_categoria.cantidad_maxima:
+                    necesita_autorizacion = True
+                    motivo_autorizacion.append(f"Límite anual agotado para {categoria.nombre}.")
+            
+            except CoberturaCategoriaPlan.DoesNotExist:
+                necesita_autorizacion = True
+                motivo_autorizacion.append(f"La categoría '{categoria.nombre}' no está cubierta por el plan.")
+
+        # Guardamos los servicios seleccionados
+        orden_servicio.servicios_prestados.set(servicios_seleccionados)
+        total = servicios_seleccionados.aggregate(Sum('precio'))['precio__sum'] or 0.00
         orden_servicio.monto_referencial_os = total
+        
+        if necesita_autorizacion:
+            orden_servicio.estado_os = OrdenDeServicio.EstadoOS.PENDIENTE_AUTORIZACION
+            # Podríamos guardar el motivo en un campo de observaciones si fuera necesario
+        else:
+            orden_servicio.estado_os = OrdenDeServicio.EstadoOS.NOTIFICADA
+        
         orden_servicio.save()
         
-        # Redirigimos a una página de confirmación de "solicitud enviada"
-        return redirect('validar_asegurabilidad') # Por ahora, redirigimos al validador
+        # Redirigimos a una página de confirmación
+        return redirect('validar_asegurabilidad')
 
     contexto = {
         'orden_servicio': orden_servicio,
@@ -224,3 +262,73 @@ def cancelar_creacion_os(request, os_id):
     
     # Redirigimos de vuelta al formulario inicial para ese asegurado.
     return redirect('crear_orden_de_servicio', asegurado_id=asegurado.id)
+
+def supervisor_check(user):
+    """Función auxiliar para verificar si un usuario es supervisor o superusuario."""
+    if user.is_superuser:
+        return True
+    if hasattr(user, 'rol') and user.rol:
+        # Asumimos que los roles de supervisión pueden contener la palabra "Supervisor"
+        return 'supervisor' in user.rol.nombre_rol.lower()
+    return False
+
+@login_required
+def bandeja_autorizaciones(request):
+    """
+    Muestra las OS pendientes de autorización solo a usuarios con permisos.
+    """
+    if not supervisor_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a esta página.")
+
+    ordenes_pendientes = OrdenDeServicio.objects.filter(
+        estado_os=OrdenDeServicio.EstadoOS.PENDIENTE_AUTORIZACION
+    ).order_by('fecha_emision')
+
+    contexto = {
+        'ordenes': ordenes_pendientes,
+    }
+    return render(request, 'operaciones/bandeja_autorizaciones.html', contexto)
+
+@login_required
+def aprobar_os(request, os_id):
+    """
+    Aprueba una OS, verificando primero los permisos del usuario.
+    """
+    if not supervisor_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para realizar esta acción.")
+
+    orden_servicio = get_object_or_404(OrdenDeServicio, pk=os_id)
+    
+    orden_servicio.estado_os = OrdenDeServicio.EstadoOS.NOTIFICADA
+    orden_servicio.autorizado_por = request.user
+    orden_servicio.fecha_autorizacion = timezone.now()
+    orden_servicio.save()
+
+    messages.success(request, f"La Orden de Servicio {orden_servicio.numero_os} ha sido aprobada exitosamente.")
+    return redirect('bandeja_autorizaciones')
+
+@login_required
+def rechazar_os(request, os_id):
+    """
+    Rechaza una OS, verificando primero los permisos del usuario.
+    """
+    if not supervisor_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para realizar esta acción.")
+
+    orden_servicio = get_object_or_404(OrdenDeServicio, pk=os_id)
+    
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo_rechazo')
+        if motivo:
+            orden_servicio.estado_os = OrdenDeServicio.EstadoOS.RECHAZADA
+            orden_servicio.autorizado_por = request.user
+            orden_servicio.fecha_autorizacion = timezone.now()
+            orden_servicio.motivo_rechazo = motivo
+            orden_servicio.save()
+            messages.warning(request, f"La solicitud de OS ha sido rechazada.")
+            return redirect('bandeja_autorizaciones')
+
+    contexto = {
+        'orden_servicio': orden_servicio,
+    }
+    return render(request, 'operaciones/rechazar_os.html', contexto)

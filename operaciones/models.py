@@ -41,6 +41,16 @@ class OrdenDeServicio(models.Model):
 
     estado_os = models.CharField("Estado de la OS", max_length=3, choices=EstadoOS.choices, default=EstadoOS.PENDIENTE_AUTORIZACION)
 
+    # --- CAMPOS DE AUDITORÍA ---
+    auditado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="os_auditadas",
+        help_text="Supervisor que auditó la OS."
+    )
+    fecha_auditoria = models.DateTimeField("Fecha de Auditoría", null=True, blank=True)
+
     es_exonerada = models.BooleanField("Exonerada (Presidencia)", default=False)
     autorizado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="os_autorizadas")
     fecha_autorizacion = models.DateTimeField("Fecha de Autorización", null=True, blank=True)

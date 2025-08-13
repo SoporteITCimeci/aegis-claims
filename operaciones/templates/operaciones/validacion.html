@@ -17,11 +17,13 @@
                 <img src="{% static 'img/LOGO_CIMECI_RIF.JPG' %}" alt="Logo CIMECI" style="height: 120px;" class="mr-4">
                 <h1 class="text-2xl font-bold text-white">Portal de Operaciones</h1>
             </div>
-            <div class="text-white">
-                Bienvenido, {{ user.username }} | 
-                <a href="#" onclick="document.getElementById('logout-form').submit();" class="hover:underline">Cerrar Sesión</a>
-            </div>
-        </div>
+<div class="text-white">
+    Bienvenido, {{ user.username }} | 
+    {% if user.is_superuser or 'supervisor' in user.rol.nombre_rol|lower %}
+        <a href="{% url 'bandeja_autorizaciones' %}" class="font-bold hover:underline">Bandeja de Autorizaciones</a> |
+    {% endif %}
+    <a href="#" onclick="document.getElementById('logout-form').submit();" class="hover:underline">Cerrar Sesión</a>
+</div>
     </header>
 
     <main class="container mx-auto px-4 py-8">
