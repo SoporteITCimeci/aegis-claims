@@ -37,22 +37,23 @@ def login_redirect(request):
     if not user.is_authenticated:
         return redirect(reverse('login'))
 
-    # Los superusuarios siempre van al panel de admin.
     if user.is_superuser:
         return redirect('admin:index')
     
-    # Se verifica si el usuario tiene un rol asignado.
     if hasattr(user, 'rol') and user.rol:
         rol_nombre = user.rol.nombre_rol.lower()
-        # Si el rol es 'operaciones' O contiene 'supervisor', va al portal.
+        
         if rol_nombre == 'operaciones' or 'supervisor' in rol_nombre:
             return redirect('validar_asegurabilidad')
+        
+        # --- LÓGICA ACTUALIZADA ---
+        # Si el rol es Convenios y es staff, va al panel de admin.
+        if 'convenios' in rol_nombre and user.is_staff:
+            return redirect('admin:index')
     
-    # Si es staff pero no de los roles anteriores (ej. Finanzas), va al admin.
     if user.is_staff:
         return redirect('admin:index')
 
-    # Si llega aquí, es un usuario sin permisos válidos. Lo expulsamos.
     messages.error(request, "No tiene permisos para acceder al sistema.")
     logout(request)
     return redirect('login')

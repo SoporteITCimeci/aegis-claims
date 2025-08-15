@@ -1,0 +1,111 @@
+{% extends "operaciones/base_operaciones.html" %}
+{% block title %}Mapa de Proveedores{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 70vh; border-radius: 0.5rem; border: 1px solid #ddd; }
+        .leaflet-popup-content-wrapper { border-radius: 0.5rem; }
+        .info-panel {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        .info-panel h4 { margin: 0 0 5px 0; font-weight: bold; }
+        .info-panel p { margin: 0; }
+    </style>
+
+    <div class="flex justify-between items-center border-b pb-2 mb-4">
+        <h2 class="text-2xl font-bold text-gray-800">Mapa de Proveedores Activos</h2>
+        <a href="{% url 'validar_asegurabilidad' %}" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md">
+            &larr; Volver a la Validación
+        </a>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const map = L.map('map').setView([6.4238, -66.5897], 5.5); // Centrado en Venezuela
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        let geojsonLayer;
+
+        function style(feature) {
+            return {
+                fillColor: '#008CBA',
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.6
+            };
+        }
+
+        function highlightFeature(e) {
+            const layer = e.target;
+            layer.setStyle({
+                weight: 5,
+                color: '#0B2D48',
+                dashArray: '',
+                fillOpacity: 0.7
+            });
+            info.update(layer.feature.properties);
+        }
+
+        function resetHighlight(e) {
+            geojsonLayer.resetStyle(e.target);
+            info.update();
+        }
+
+        function zoomToFeature(e) {
+            map.fitBounds(e.target.getBounds());
+            // Aquí iría la lógica para mostrar las ciudades
+        }
+
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: zoomToFeature
+            });
+        }
+        
+        const info = L.control();
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info-panel');
+            this.update();
+            return this._div;
+        };
+        info.update = function (props) {
+            this._div.innerHTML = '<h4>Cobertura de Proveedores</h4>' +  (props ?
+                '<b>' + props.name + '</b><br />Pase el cursor sobre un estado'
+                : 'Pase el cursor sobre un estado');
+        };
+        info.addTo(map);
+
+        // Cargar GeoJSON de Venezuela y datos de proveedores
+        Promise.all([
+            fetch('https://raw.githubusercontent.com/juanpabloaj/maps-data/master/venezuela/estados.geojson').then(res => res.json()),
+            fetch('{% url "proveedores_activos_api" %}').then(res => res.json())
+        ]).then(([geojson, apiData]) => {
+            const activeStates = apiData.estados;
+            
+            const filteredGeoJSON = {
+                ...geojson,
+                features: geojson.features.filter(feature => activeStates.includes(feature.properties.name))
+            };
+
+            geojsonLayer = L.geoJson(filteredGeoJSON, {
+                style: style,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+        });
+    });
+    </script>
+{% endblock %}

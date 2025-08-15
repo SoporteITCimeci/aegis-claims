@@ -8,7 +8,7 @@ from import_export.widgets import ForeignKeyWidget
 from .models import (
     Proveedor, PuntoAtencion, Cliente, Asegurado, Contrato,
     CategoriaServicio, SubServicio, Plan, DetallePlan, BaremoProveedor,
-    CoberturaCategoriaPlan
+    CoberturaCategoriaPlan, ContactoProveedor, CuentaBancariaProveedor,
 )
 
 # --- Recurso para Import/Export de Asegurados ---
@@ -67,13 +67,46 @@ class DetallePlanInline(admin.TabularInline):
     extra = 1
     autocomplete_fields = ['sub_servicio']
 
+# --- Inlines para la gestión de Proveedores ---
+class ContactoProveedorInline(admin.TabularInline):
+    model = ContactoProveedor
+    extra = 1
+    fields = ('nombre', 'telefono', 'correo')
+
+class CuentaBancariaProveedorInline(admin.TabularInline):
+    model = CuentaBancariaProveedor
+    extra = 1
+
+class PuntoAtencionInline(admin.TabularInline):
+    model = PuntoAtencion
+    extra = 1
+    fields = ('nombre_sede', 'estado', 'ciudad', 'municipio','direccion', 'telefonos', 'activo')
+
+class BaremoProveedorInline(admin.TabularInline):
+    model = BaremoProveedor
+    extra = 1
+    autocomplete_fields = ['sub_servicio']
+
 # --- Registros de Modelos en el Panel de Administración ---
 @admin.register(Proveedor)
 class ProveedorAdmin(admin.ModelAdmin):
-    list_display = ('razon_social', 'rif', 'activo')
+    list_display = ('razon_social', 'rif', 'tipo_negociacion', 'activo')
     search_fields = ('razon_social', 'rif')
-    list_filter = ('activo',)
-    inlines = [PuntoAtencionInline, BaremoProveedorInline]
+    list_filter = ('activo', 'tipo_negociacion')
+    inlines = [
+        ContactoProveedorInline,
+        CuentaBancariaProveedorInline,
+        PuntoAtencionInline,
+        BaremoProveedorInline
+    ]
+    fieldsets = (
+        ('Información Fiscal', {
+            'fields': ('rif', 'razon_social', 'direccion_fiscal')
+        }),
+        ('Condiciones Comerciales', {
+            'fields': ('tipo_negociacion', 'activo')
+        }),
+    )
 
 @admin.register(Cliente)
 class ClienteAdmin(admin.ModelAdmin):

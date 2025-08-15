@@ -13,6 +13,8 @@ from django.http import HttpResponseForbidden
 
 @login_required
 def validar_asegurabilidad(request):
+    if not operaciones_access_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a esta página.")
     contexto = {}
     query = request.GET.get('q', '')
     cliente_filtro = request.GET.get('cliente', '')
@@ -77,6 +79,8 @@ def validar_asegurabilidad(request):
 
 @login_required
 def consultar_servicios(request, asegurado_id):
+    if not operaciones_access_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a esta página.")
     asegurado = get_object_or_404(Asegurado.objects.select_related('contrato'), pk=asegurado_id)
     contrato_actual = asegurado.contrato
     
@@ -144,6 +148,8 @@ def consultar_servicios(request, asegurado_id):
 
 @login_required
 def crear_orden_de_servicio(request, asegurado_id):
+    if not operaciones_access_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a esta página.")
     asegurado = get_object_or_404(Asegurado, pk=asegurado_id)
     
     if request.method == 'POST':
@@ -176,6 +182,8 @@ def crear_orden_de_servicio(request, asegurado_id):
 
 @login_required
 def seleccionar_servicios(request, os_id):
+    if not operaciones_access_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a esta página.")
     orden_servicio = get_object_or_404(OrdenDeServicio, pk=os_id)
     asegurado = orden_servicio.siniestro.asegurado
     contrato_actual = asegurado.contrato
@@ -243,6 +251,8 @@ def seleccionar_servicios(request, os_id):
 
 @login_required
 def get_puntos_atencion(request):
+    if not operaciones_access_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a esta página.")
     proveedor_id = request.GET.get('proveedor_id')
     puntos = PuntoAtencion.objects.filter(proveedor_id=proveedor_id, activo=True).order_by('nombre_sede')
     return JsonResponse(list(puntos.values('id', 'nombre_sede')), safe=False)
@@ -250,6 +260,8 @@ def get_puntos_atencion(request):
 
 @login_required
 def cancelar_creacion_os(request, os_id):
+    if not operaciones_access_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a esta página.")
     """
     Elimina un Siniestro y su OS asociada si el operador cancela el proceso
     a mitad de camino, para no dejar registros huérfanos.
@@ -332,3 +344,54 @@ def rechazar_os(request, os_id):
         'orden_servicio': orden_servicio,
     }
     return render(request, 'operaciones/rechazar_os.html', contexto)
+
+# --- FUNCIÓN DE PERMISOS ACTUALIZADA PARA EL MAPA ---
+def mapa_access_check(user):
+    """
+    Verifica si un usuario tiene permiso para ver el mapa.
+    """
+    if user.is_superuser:
+        return True
+    if hasattr(user, 'rol') and user.rol:
+        rol_nombre = user.rol.nombre_rol.lower()
+        return 'convenios' in rol_nombre or 'operaciones' in rol_nombre or 'supervisor' in rol_nombre
+    return False
+
+@login_required
+def mapa_proveedores(request):
+    # Aplicamos el chequeo de permisos
+    if not mapa_access_check(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a esta página.")
+    return render(request, 'operaciones/mapa_proveedores.html')
+
+@login_required
+def proveedores_activos_api(request):
+    if not mapa_access_check(request.user):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+@login_required
+def proveedores_activos_api(request):
+    puntos_activos = PuntoAtencion.objects.filter(activo=True, proveedor__activo=True)
+    
+    estados = list(puntos_activos.values_list('estado', flat=True).distinct())
+    ciudades = {}
+    for estado in estados:
+        ciudades[estado] = list(puntos_activos.filter(estado=estado).values_list('ciudad', flat=True).distinct())
+
+    data = {
+        'estados': estados,
+        'ciudades': ciudades,
+    }
+    return JsonResponse(data)
+
+# --- NUEVA FUNCIÓN DE PERMISOS PARA OPERACIONES ---
+def operaciones_access_check(user):
+    """
+    Verifica si un usuario pertenece al flujo de operaciones (Operador o Supervisor).
+    """
+    if user.is_superuser:
+        return True
+    if hasattr(user, 'rol') and user.rol:
+        rol_nombre = user.rol.nombre_rol.lower()
+        return 'operaciones' in rol_nombre or 'supervisor' in rol_nombre
+    return False

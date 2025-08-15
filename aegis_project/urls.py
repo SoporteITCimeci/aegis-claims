@@ -14,6 +14,7 @@ urlpatterns = [
     path('login/', core_views.login_view, name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('login_redirect/', core_views.login_redirect, name='login_redirect'),
+    path('admin/gestion/', include('gestion.urls')),
     path('admin/', admin.site.urls),
     path('operaciones/', include('operaciones.urls')),
     path('', RedirectView.as_view(url='/login/', permanent=False)),

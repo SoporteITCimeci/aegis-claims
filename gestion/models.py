@@ -7,27 +7,62 @@ from simple_history.models import HistoricalRecords
 
 # --- Modelos de Proveedores ---
 class Proveedor(models.Model):
-    razon_social = models.CharField(max_length=255, unique=True)
+    rif = models.CharField("R.I.F.", max_length=20, unique=True)
+    razon_social = models.CharField("Razón Social", max_length=255)
+    direccion_fiscal = models.TextField("Dirección Fiscal")
+    
+    class TipoNegociacion(models.TextChoices):
+        CONVENIO = 'CONVENIO', 'Convenio'
+        PREPAGO = 'PREPAGO', 'Prepago'
+        HORARIO_ACORDADO = 'HORARIO', 'Horario Acordado'
+        
+    tipo_negociacion = models.CharField("Tipo de Negociación", max_length=10, choices=TipoNegociacion.choices, default=TipoNegociacion.CONVENIO)
     activo = models.BooleanField(default=True)
-    rif = models.CharField("R.I.F.", max_length=20, blank=True, unique=True)
-    banco_pago = models.CharField("Banco", max_length=100, blank=True)
-    numero_cuenta = models.CharField("Número de Cuenta", max_length=20, blank=True)
-    class TipoCuenta(models.TextChoices):
-        CORRIENTE = 'COR', 'Corriente'
-        AHORROS = 'AHO', 'Ahorros'
-    tipo_cuenta = models.CharField(max_length=3, choices=TipoCuenta.choices, blank=True)
     history = HistoricalRecords()
+    
     class Meta:
         verbose_name_plural = "Proveedores"
     def __str__(self): return self.razon_social
 
+class ContactoProveedor(models.Model):
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.CASCADE, related_name="contactos")
+    nombre = models.CharField("Nombre Completo", max_length=100)
+    telefono = models.CharField("Teléfono", max_length=20)
+    correo = models.EmailField("Correo Electrónico")
+
+    def __str__(self):
+        return f"Contacto de {self.proveedor.razon_social}: {self.nombre}"
+    
+class CuentaBancariaProveedor(models.Model):
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.CASCADE, related_name="cuentas_bancarias")
+    
+    class TipoCuenta(models.TextChoices):
+        CORRIENTE = 'CORRIENTE', 'Corriente'
+        AHORROS = 'AHORROS', 'Ahorros'
+        ZELLE = 'ZELLE', 'Zelle'
+        PAYPAL = 'PAYPAL', 'PayPal'
+        CUSTODIA = 'CUSTODIA', 'Cuenta Custodia'
+        PAGO_MOVIL = 'PAGOMOVIL', 'Pago Móvil'
+
+    tipo_cuenta = models.CharField("Tipo", max_length=10, choices=TipoCuenta.choices)
+    banco = models.CharField("Banco / Plataforma", max_length=100)
+    numero_cuenta = models.CharField("Número de Cuenta / Correo / Teléfono", max_length=100)
+    titular = models.CharField("Nombre del Titular", max_length=100)
+    cedula_rif = models.CharField("Cédula o RIF del Titular", max_length=20)
+
+    def __str__(self):
+        return f"{self.get_tipo_cuenta_display()} de {self.proveedor.razon_social}"
+
 class PuntoAtencion(models.Model):
     proveedor = models.ForeignKey(Proveedor, on_delete=models.CASCADE, related_name="puntos_atencion")
     nombre_sede = models.CharField("Nombre de la Sede/APS", max_length=255)
+    estado = models.CharField("Estado", max_length=100)
+    ciudad = models.CharField("Ciudad", max_length=100)
+    municipio = models.CharField("Municipio", max_length=100)
     direccion = models.TextField("Dirección de la Sede")
     telefonos = models.CharField("Teléfonos de Contacto", max_length=150)
-    persona_contacto_sede = models.CharField("Persona Contacto (Sede)", max_length=100, blank=True)
     activo = models.BooleanField(default=True)
+    
     class Meta:
         verbose_name = "Punto de Atención"
         verbose_name_plural = "Puntos de Atención"

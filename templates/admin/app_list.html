@@ -8,8 +8,19 @@
           <a href="{{ app.app_url }}" class="section" title="{% blocktrans with name=app.name %}Models in the {{ name }} application{% endblocktrans %}">{{ app.name }}</a>
         </caption>
         
-        {# Lógica especial para reordenar la app GESTION #}
+        {# Lógica especial para la app GESTION #}
         {% if app.app_label == 'gestion' %}
+          
+          {# Mostramos primero la herramienta del mapa si el rol es Convenios #}
+          {% if 'convenios' in user.rol.nombre_rol|lower or user.is_superuser %}
+            <tr class="model-mapaproveedores">
+              <th scope="row"><a href="{% url 'mapa_proveedores' %}">Mapa de Proveedores</a></th>
+              <td><a href="{% url 'mapa_proveedores' %}" class="viewlink">{% trans 'View' %}</a></td>
+              <td>&nbsp;</td>
+            </tr>
+          {% endif %}
+
+          {# Ahora mostramos los modelos en el orden correcto #}
           {% for model in app.models %}{% if model.object_name == 'CategoriaServicio' %}<tr class="model-{{ model.object_name|lower }}">{% if model.admin_url %}<th scope="row"><a href="{{ model.admin_url }}">{{ model.name }}</a></th>{% else %}<th scope="row">{{ model.name }}</th>{% endif %}{% if model.add_url %}<td><a href="{{ model.add_url }}" class="addlink">{% trans 'Add' %}</a></td>{% else %}<td>&nbsp;</td>{% endif %}{% if model.admin_url %}<td><a href="{{ model.admin_url }}" class="changelink">{% trans 'Change' %}</a></td>{% else %}<td>&nbsp;</td>{% endif %}</tr>{% endif %}{% endfor %}
           {% for model in app.models %}{% if model.object_name == 'SubServicio' %}<tr class="model-{{ model.object_name|lower }}">{% if model.admin_url %}<th scope="row"><a href="{{ model.admin_url }}">{{ model.name }}</a></th>{% else %}<th scope="row">{{ model.name }}</th>{% endif %}{% if model.add_url %}<td><a href="{{ model.add_url }}" class="addlink">{% trans 'Add' %}</a></td>{% else %}<td>&nbsp;</td>{% endif %}{% if model.admin_url %}<td><a href="{{ model.admin_url }}" class="changelink">{% trans 'Change' %}</a></td>{% else %}<td>&nbsp;</td>{% endif %}</tr>{% endif %}{% endfor %}
           {% for model in app.models %}{% if model.object_name == 'Proveedor' %}<tr class="model-{{ model.object_name|lower }}">{% if model.admin_url %}<th scope="row"><a href="{{ model.admin_url }}">{{ model.name }}</a></th>{% else %}<th scope="row">{{ model.name }}</th>{% endif %}{% if model.add_url %}<td><a href="{{ model.add_url }}" class="addlink">{% trans 'Add' %}</a></td>{% else %}<td>&nbsp;</td>{% endif %}{% if model.admin_url %}<td><a href="{{ model.admin_url }}" class="changelink">{% trans 'Change' %}</a></td>{% else %}<td>&nbsp;</td>{% endif %}</tr>{% endif %}{% endfor %}
@@ -24,23 +35,9 @@
         {% else %}
           {% for model in app.models %}
             <tr class="model-{{ model.object_name|lower }}">
-            {% if model.admin_url %}
-              <th scope="row"><a href="{{ model.admin_url }}">{{ model.name }}</a></th>
-            {% else %}
-              <th scope="row">{{ model.name }}</th>
-            {% endif %}
-
-            {% if model.add_url %}
-              <td><a href="{{ model.add_url }}" class="addlink">{% trans 'Add' %}</a></td>
-            {% else %}
-              <td>&nbsp;</td>
-            {% endif %}
-
-            {% if model.admin_url %}
-              <td><a href="{{ model.admin_url }}" class="changelink">{% trans 'Change' %}</a></td>
-            {% else %}
-              <td>&nbsp;</td>
-            {% endif %}
+            {% if model.admin_url %}<th scope="row"><a href="{{ model.admin_url }}">{{ model.name }}</a></th>{% else %}<th scope="row">{{ model.name }}</th>{% endif %}
+            {% if model.add_url %}<td><a href="{{ model.add_url }}" class="addlink">{% trans 'Add' %}</a></td>{% else %}<td>&nbsp;</td>{% endif %}
+            {% if model.admin_url %}<td><a href="{{ model.admin_url }}" class="changelink">{% trans 'Change' %}</a></td>{% else %}<td>&nbsp;</td>{% endif %}
             </tr>
           {% endfor %}
         {% endif %}

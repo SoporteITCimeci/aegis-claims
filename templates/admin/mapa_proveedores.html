@@ -1,0 +1,58 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 65vh; border-radius: 0.5rem; border: 1px solid #ddd; z-index: 1; }
+        .back-button-container {
+            margin-bottom: 1rem;
+            text-align: right;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="back-button-container">
+        <a href="{% url 'admin:index' %}" class="button">Volver al Inicio</a>
+    </div>
+
+    <p>Los estados resaltados en azul indican la presencia de al menos un proveedor activo.</p>
+    <div id="map" class="mt-4"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const map = L.map('map').setView([7.9, -66.5], 5.5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    function normalizeText(text) {
+        if (!text) return "";
+        return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    Promise.all([
+        fetch('https://raw.githubusercontent.com/juanpabloaj/maps-data/master/venezuela/estados.geojson').then(res => res.json()),
+        fetch("{% url 'proveedores_activos_api' %}").then(res => res.json())
+    ]).then(([geojson, apiData]) => {
+        const activeStates = new Set(apiData.estados);
+        
+        const filteredGeoJSON = {
+            ...geojson,
+            features: geojson.features.filter(feature => 
+                activeStates.has(normalizeText(feature.properties.name))
+            )
+        };
+
+        L.geoJson(filteredGeoJSON, { 
+            style: { fillColor: '#008CBA', weight: 1, opacity: 1, color: 'white', fillOpacity: 0.6 }
+        }).addTo(map);
+    });
+});
+</script>
+{% endblock %}
